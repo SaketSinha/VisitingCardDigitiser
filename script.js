@@ -205,28 +205,79 @@ function extractOther(lines, name, emails, phones) {
 function addCard(card) {
     cards.unshift(card); // newest on top
     renderTable();
+    saveCards();
+}
+
+function saveCards() {
     localStorage.setItem('cards', JSON.stringify(cards));
+}
+
+function updateCard(index, field, value) {
+    cards[index][field] = value;
+    saveCards();
+}
+
+function deleteCard(index) {
+    if (confirm('Are you sure you want to delete this card?')) {
+        cards.splice(index, 1);
+        renderTable();
+        saveCards();
+    }
 }
 
 function renderTable() {
     tableBody.innerHTML = '';
-    cards.forEach((c) => {
+    cards.forEach((c, index) => {
         const tr = document.createElement('tr');
 
-        const tdName = document.createElement('td');
-        tdName.textContent = c.name;
+        // Helper to create editable cell
+        const createEditableCell = (field, value) => {
+            const td = document.createElement('td');
+            td.contentEditable = true;
+            td.textContent = Array.isArray(value) ? value.join(', ') : value;
+            td.className = 'editable';
 
-        const tdPhones = document.createElement('td');
-        tdPhones.textContent = Array.isArray(c.phones) ? c.phones.join(', ') : c.phones;
+            td.addEventListener('blur', () => {
+                const newValue = td.textContent.trim();
+                // Simple visual feedback
+                td.classList.add('save-flash');
+                setTimeout(() => td.classList.remove('save-flash'), 1000);
 
-        const tdEmail = document.createElement('td');
-        tdEmail.textContent = c.email;
+                // Update data model
+                // For arrays (phones, other), we split by comma if user edited it as string
+                let finalValue = newValue;
+                if (Array.isArray(cards[index][field])) {
+                    finalValue = newValue.split(',').map(s => s.trim()).filter(Boolean);
+                }
+                updateCard(index, field, finalValue);
+            });
 
-        const tdOther = document.createElement('td');
-        // Handle both array (AI) and flat array (Regex)
-        tdOther.textContent = Array.isArray(c.other) ? c.other.join(' | ') : c.other;
+            // Save on Enter (prevent newline)
+            td.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    td.blur();
+                }
+            });
 
-        tr.append(tdName, tdPhones, tdEmail, tdOther);
+            return td;
+        };
+
+        const tdName = createEditableCell('name', c.name);
+        const tdPhones = createEditableCell('phones', c.phones);
+        const tdEmail = createEditableCell('email', c.email);
+        const tdOther = createEditableCell('other', c.other);
+
+        // Delete Button Cell
+        const tdAction = document.createElement('td');
+        const delBtn = document.createElement('button');
+        delBtn.className = 'delete-btn';
+        delBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
+        delBtn.title = 'Delete Card';
+        delBtn.onclick = () => deleteCard(index);
+        tdAction.appendChild(delBtn);
+
+        tr.append(tdName, tdPhones, tdEmail, tdOther, tdAction);
         tableBody.appendChild(tr);
     });
 }

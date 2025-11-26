@@ -84,28 +84,6 @@ video {
   box-shadow: 0 8px 15px rgba(0, 120, 255, 0.3);
 }
 
-.results-section table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 1rem;
-}
-
-.results-section th,
-.results-section td {
-  padding: 0.75rem;
-  text-align: left;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.results-section th {
-  background: rgba(255, 255, 255, 0.12);
-  font-weight: 600;
-}
-
-.results-section tbody tr:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
 /* Sidebar & Settings */
 .settings-toggle {
   position: absolute;
