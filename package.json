@@ -1,0 +1,14 @@
+{
+  "name": "visiting-card-digitiser",
+  "version": "1.0.0",
+  "description": "A premium web app to scan visiting cards, extract contact info via OCR, and display/export as JSON.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
