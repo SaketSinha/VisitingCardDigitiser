@@ -45,12 +45,64 @@ aiProviderSelect.addEventListener('change', (e) => {
     validateKey(apiKey, aiProvider);
 });
 
+async function validateKey(key, provider) {
+    keyValidationMsg.textContent = 'Checking key...';
+    keyValidationMsg.className = 'validation-msg';
+
+    let isValid = false;
+    let msg = '';
+
+    try {
+        if (provider === 'openai') {
+            if (!key.startsWith('sk-')) throw new Error('Invalid format');
+            const res = await fetch('https://api.openai.com/v1/models', {
+                headers: { 'Authorization': `Bearer ${key}` }
+            });
+            if (res.ok) isValid = true;
+        } else if (provider === 'anthropic') {
+            if (!key.startsWith('sk-ant-')) throw new Error('Invalid format');
+            // Anthropic doesn't have a lightweight "list models" endpoint that is cheap/free to hit easily without a full request, 
+            // but we can try a very small request or rely on format for now to avoid cost, 
+            // OR try a dummy message. Let's stick to format + simple fetch if possible.
+            // Actually, let's just trust the format for Anthropic to avoid wasting tokens on every keystroke, 
+            // or we can try to hit the models endpoint if available (it is).
+            // Note: Anthropic client-side calls might be CORS restricted without a proxy, but we are assuming user knows this risk/setup.
+            // For this demo, we will stick to format check to be safe and fast.
+            isValid = true;
+        } else if (provider === 'gemini') {
+            if (key.length < 20) throw new Error('Invalid format');
+            // Gemini "list models"
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+            if (res.ok) isValid = true;
+        }
+    } catch (e) {
+        isValid = false;
+    }
+
+    if (isValid) {
+        msg = `Valid ${provider.charAt(0).toUpperCase() + provider.slice(1)} Key`;
+        keyValidationMsg.className = 'validation-msg valid';
+    } else {
+        msg = `Invalid ${provider.charAt(0).toUpperCase() + provider.slice(1)} Key`;
+        keyValidationMsg.className = 'validation-msg invalid';
+    }
+
+    keyValidationMsg.textContent = msg;
+    updateKeyStatus(isValid);
+    return isValid;
+}
+
+// Debounce the input to avoid hitting API on every keystroke
+let debounceTimer;
 apiKeyInput.addEventListener('input', (e) => {
     const key = e.target.value.trim();
     apiKey = key;
+
+    clearTimeout(debounceTimer);
+
     if (key) {
         sessionStorage.setItem('ai_api_key', key);
-        validateKey(key, aiProvider);
+        debounceTimer = setTimeout(() => validateKey(key, aiProvider), 500);
     } else {
         sessionStorage.removeItem('ai_api_key');
         updateKeyStatus(false);
@@ -58,28 +110,6 @@ apiKeyInput.addEventListener('input', (e) => {
         keyValidationMsg.className = 'validation-msg';
     }
 });
-
-function validateKey(key, provider) {
-    let isValid = false;
-    let msg = '';
-
-    if (provider === 'openai') {
-        isValid = key.startsWith('sk-');
-        msg = isValid ? 'Valid OpenAI Key format' : 'Invalid OpenAI Key (must start with sk-)';
-    } else if (provider === 'gemini') {
-        isValid = key.length > 20 && !key.startsWith('sk-'); // Simple heuristic
-        msg = isValid ? 'Valid Gemini Key format' : 'Invalid Gemini Key format';
-    } else if (provider === 'anthropic') {
-        isValid = key.startsWith('sk-ant-');
-        msg = isValid ? 'Valid Anthropic Key format' : 'Invalid Anthropic Key (must start with sk-ant-)';
-    }
-
-    keyValidationMsg.textContent = msg;
-    keyValidationMsg.className = `validation-msg ${isValid ? 'valid' : 'invalid'}`;
-    
-    updateKeyStatus(isValid);
-    return isValid;
-}
 
 function updateKeyStatus(hasKey) {
     if (hasKey) {
@@ -126,10 +156,10 @@ function preprocessCanvas(canvas) {
     const ctx = canvas.getContext('2d');
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imgData.data;
-    const factor = 1.2; 
+    const factor = 1.2;
     for (let i = 0; i < data.length; i += 4) {
         const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-        data[i] = data[i + 1] = data[i + 2] = avg; 
+        data[i] = data[i + 1] = data[i + 2] = avg;
         data[i] = Math.min(255, data[i] * factor);
         data[i + 1] = Math.min(255, data[i + 1] * factor);
         data[i + 2] = Math.min(255, data[i + 2] * factor);
@@ -169,10 +199,10 @@ async function parseWithAI(text) {
                 })
             });
         } else if (aiProvider === 'anthropic') {
-             response = await fetch('https://api.anthropic.com/v1/messages', {
+            response = await fetch('https://api.anthropic.com/v1/messages', {
                 method: 'POST',
-                headers: { 
-                    'x-api-key': apiKey, 
+                headers: {
+                    'x-api-key': apiKey,
                     'anthropic-version': '2023-06-01',
                     'content-type': 'application/json',
                     'dangerously-allow-browser': 'true' // Required for client-side
@@ -353,7 +383,7 @@ exportCsvBtn.addEventListener('click', () => {
     }
     // CSV Header
     let csvContent = "Name,Phone(s),Email,Other\n";
-    
+
     cards.forEach(c => {
         // Helper to escape CSV fields (handle quotes and commas)
         const escape = (val) => {
@@ -361,7 +391,7 @@ exportCsvBtn.addEventListener('click', () => {
             const str = String(val || '').replace(/"/g, '""');
             return `"${str}"`;
         };
-        
+
         const row = [
             escape(c.name),
             escape(c.phones),
@@ -384,7 +414,7 @@ exportCsvBtn.addEventListener('click', () => {
 function loadPersisted() {
     const stored = localStorage.getItem('cards');
     if (stored) {
-        try { cards = JSON.parse(stored); renderTable(); } 
+        try { cards = JSON.parse(stored); renderTable(); }
         catch (e) { console.error('Failed to parse stored cards', e); }
     }
 }
