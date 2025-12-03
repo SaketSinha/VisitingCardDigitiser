@@ -89,6 +89,10 @@
 
         <div class="camera-section glass">
             <video id="video" autoplay playsinline></video>
+            <!-- Camera selector (shown only when multiple cameras are detected) -->
+            <select id="cameraSelect" class="camera-select" style="display:none; margin-top:0.5rem;">
+                <option value="">Default Camera</option>
+            </select>
 
             <!-- AI Status Badge -->
             <div id="aiStatusBadge" class="ai-badge" title="Click to configure AI">

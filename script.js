@@ -1,5 +1,39 @@
 // script.js - Visiting Card Digitiser core logic
 
+// Populate camera selector with available video inputs
+async function populateCameraList() {
+    try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+        // Hide selector if only one camera
+        if (videoDevices.length <= 1) {
+            cameraSelect.style.display = 'none';
+            return;
+        }
+        // Clear any existing options (keep placeholder)
+        cameraSelect.innerHTML = '<option value="">Select Camera</option>';
+        videoDevices.forEach((dev, i) => {
+            const option = document.createElement('option');
+            option.value = dev.deviceId;
+            option.text = dev.label || (i === 0 ? 'Back Camera' : 'Front Camera');
+            cameraSelect.appendChild(option);
+        });
+        cameraSelect.style.display = 'inline-block';
+    } catch (e) {
+        console.error('Failed to enumerate cameras', e);
+    }
+}
+
+// Listen for user selection to switch camera
+const cameraSelect = document.getElementById('cameraSelect');
+cameraSelect.addEventListener('change', async (e) => {
+    const deviceId = e.target.value;
+    if (video.srcObject) {
+        video.srcObject.getTracks().forEach(track => track.stop());
+    }
+    await initCamera(deviceId);
+});
+
 // Global state
 let cards = [];
 const video = document.getElementById('video');
@@ -130,9 +164,13 @@ function updateKeyStatus(hasKey) {
 }
 
 // Initialize webcam stream
-async function initCamera() {
+async function initCamera(deviceId) {
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const constraints = deviceId
+            ? { video: { deviceId: { exact: deviceId } } }
+            // Default to back (environment) camera on mobile
+            : { video: { facingMode: { ideal: 'environment' } } };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = stream;
     } catch (err) {
         alert('Error accessing webcam: ' + err.message);
@@ -419,5 +457,6 @@ function loadPersisted() {
     }
 }
 
+populateCameraList();
 initCamera();
 loadPersisted();
